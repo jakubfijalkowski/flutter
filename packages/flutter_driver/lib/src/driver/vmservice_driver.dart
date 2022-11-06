@@ -23,7 +23,7 @@ class VMServiceFlutterDriver extends FlutterDriver {
     this._appIsolate, {
       bool printCommunication = false,
       bool logCommunicationToFile = true,
-    }) : _printCommunication = printCommunication,
+    }) : _printCommunication = true,
       _logCommunicationToFile = logCommunicationToFile,
       _driverId = _nextDriverId++
     {
@@ -569,14 +569,25 @@ Future<vms.VmService> _waitAndConnect(String url, Map<String, dynamic>? headers)
       final StreamController<dynamic> controller = StreamController<dynamic>();
       final Completer<void> streamClosedCompleter = Completer<void>();
       socket.listen(
-        (dynamic data) => controller.add(data),
-        onDone: () => streamClosedCompleter.complete(),
+        (dynamic data) {
+          try {
+            driverLog('VmService WS log', 'Data arrived: $data');
+          } catch(e) {
+            _log('Cannot log WS data');
+          }
+          controller.add(data);
+        },
+        onDone: () {
+          streamClosedCompleter.complete();
+          driverLog('VmService WS log', 'Stream closed');
+        }
       );
       final vms.VmService service = vms.VmService(
         controller.stream,
         socket.add,
         disposeHandler: () => socket!.close(),
-        streamClosed: streamClosedCompleter.future
+        streamClosed: streamClosedCompleter.future,
+        log: _FakeVMServiceLog()
       );
       // This call is to ensure we are able to establish a connection instead of
       // keeping on trucking and failing farther down the process.
@@ -648,3 +659,15 @@ Future<T> _warnIfSlow<T>({
 
 /// A function that connects to a Dart VM service given the `url` and `headers`.
 typedef VMServiceConnectFunction = Future<vms.VmService> Function(String url, Map<String, dynamic>? headers);
+
+class _FakeVMServiceLog implements vms.Log {
+  @override
+  void severe(String message) {
+    driverLog('VMService severe', message);
+  }
+
+  @override
+  void warning(String message) {
+    driverLog('VMService warning', message);
+  }
+}
