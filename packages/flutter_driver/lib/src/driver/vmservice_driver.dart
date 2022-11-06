@@ -571,7 +571,7 @@ Future<vms.VmService> _waitAndConnect(String url, Map<String, dynamic>? headers)
       socket.listen(
         (dynamic data) {
           try {
-            driverLog('VmService WS log', 'Data arrived: $data');
+            driverLog('VmService WS log', '<<<<< $data');
           } catch(e) {
             _log('Cannot log WS data');
           }
@@ -584,7 +584,10 @@ Future<vms.VmService> _waitAndConnect(String url, Map<String, dynamic>? headers)
       );
       final vms.VmService service = vms.VmService(
         controller.stream,
-        socket.add,
+        (msg) {
+          driverLog('VmService WS log', '>>>>> $msg');
+          socket!.add(msg);
+        },
         disposeHandler: () => socket!.close(),
         streamClosed: streamClosedCompleter.future,
         log: _FakeVMServiceLog()
