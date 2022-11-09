@@ -199,12 +199,24 @@ class VMServiceFlutterDriver extends FlutterDriver {
           // extension instead.
           return Completer<void>().future;
         });
+      
+      Future<void> checkIsolate() async {
+        while (!extensionAdded.isCompleted) {
+          final isolate = await client.getIsolate(isolateRef.id!);
+          await Future<void>.delayed(const Duration(seconds: 60));
+        }
+      }
+      
 
       await Future.any(<Future<void>>[
         extensionAlreadyAdded,
         extensionAdded.future,
+        checkIsolate()
       ]);
       await isolateAddedSubscription.cancel();
+      if (!extensionAdded.isCompleted) {
+        extensionAdded.complete();
+      }
       await client.streamCancel(vms.EventStreams.kIsolate);
     }
 
